@@ -1,7 +1,7 @@
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.pydantic_v1 import BaseModel, Field
 from langchain_core.runnables import RunnableSequence
-from langchain_openai import ChatOpenAI
+from langchain_google_genai import ChatGoogleGenerativeAI
 
 
 class GradeHallucinations(BaseModel):
@@ -12,7 +12,7 @@ class GradeHallucinations(BaseModel):
     )
 
 
-llm = ChatOpenAI(temperature=0)
+llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash", temperature=0)
 
 structured_llm_grader = llm.with_structured_output(GradeHallucinations)
 

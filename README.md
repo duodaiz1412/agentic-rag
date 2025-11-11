@@ -30,7 +30,7 @@ To get started, follow these steps:
 3. **Set up environment variables**:
     Create a `.env` file in the root directory and add necessary environment variables.
     ```sh
-    OPENAI_API_KEY 
+    GOOGLE_API_KEY
     TAVILY_API_KEY
     LANGCHAIN_API_KEY
     LANGCHAIN_TRACING_V2

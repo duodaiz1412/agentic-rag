@@ -19,6 +19,9 @@ langchain-chroma = "0.1.1"
 python-dotenv = "1.0.1"
 pytest = "8.2.2"
 langchain-openai = "0.1.8"
+langchain-google-genai = "1.0.7"
+fastembed = "0.3.3"
+gradio = "4.44.0"
 
 
 [build-system]
