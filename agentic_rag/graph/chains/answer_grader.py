@@ -1,7 +1,11 @@
+from dotenv import load_dotenv
+
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.pydantic_v1 import BaseModel, Field
 from langchain_core.runnables import RunnableSequence
 from langchain_google_genai import ChatGoogleGenerativeAI
+
+load_dotenv()
 
 
 class GradeAnswer(BaseModel):

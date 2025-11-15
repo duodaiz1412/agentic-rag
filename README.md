@@ -35,6 +35,20 @@ To get started, follow these steps:
     LANGCHAIN_API_KEY
     LANGCHAIN_TRACING_V2
     LANGCHAIN_PROJECT
+
+    # Database connection (defaults align với backend `api-edtech`)
+    RAG_DB_HOST=localhost
+    RAG_DB_PORT=5432
+    RAG_DB_NAME=postgres
+    RAG_DB_USER=postgres
+    RAG_DB_PASSWORD=postgres
+
+    # Tùy chọn cho vector store
+    CHROMA_COLLECTION_NAME=rag-edtech
+    CHROMA_PERSIST_DIR=.chroma
+    RAG_CHUNK_SIZE=700
+    RAG_CHUNK_OVERLAP=120
+    USER_AGENT=agentic-rag/0.1 (local)
     ```
 
 ## Usage
@@ -44,6 +58,13 @@ To run the main application:
 ```sh
 cd agentic_rag
 poetry run python main.py
+```
+
+To launch the Gradio UI:
+
+```sh
+cd agentic_rag
+poetry run python ui.py
 ```
 
 ## Acknowledgements

@@ -1,6 +1,6 @@
 from typing import Any, Dict
 
-from langchain.schema import Document
+from langchain_core.documents import Document
 from langchain_community.tools.tavily_search import TavilySearchResults
 
 from graph.state import GraphState
@@ -21,7 +21,7 @@ def web_search(state: GraphState) -> Dict[str, Any]:
     """
     print("---WEB SEARCH---")
     question = state["question"]
-    documents = state["documents"]  # only relevant documents
+    documents = state["documents"] or []  # only relevant documents
 
     tavily_results = web_search_tool.invoke({"query": question})
 
@@ -29,12 +29,20 @@ def web_search(state: GraphState) -> Dict[str, Any]:
     tavily_results_joined = "\n".join([res["content"] for res in tavily_results])
 
     # create a document object
-    web_search_result = Document(page_content=tavily_results_joined)
+    web_search_result = Document(
+        page_content=tavily_results_joined,
+        metadata={
+            "doc_type": "web_search",
+            "source": "tavily",
+            "requires_enrollment": False,
+        },
+    )
 
     # append web search to the list of documents
-    if documents is not None:
-        documents.append(web_search_result)
-    else:
-        documents = [web_search_result]
+    documents.append(web_search_result)
 
-    return {"documents": documents, "question": question}
+    return {
+        "documents": documents,
+        "question": question,
+        "user_id": state.get("user_id"),
+    }

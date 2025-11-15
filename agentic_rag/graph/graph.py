@@ -27,10 +27,11 @@ def grade_generation_grounded_in_documents_and_question(state: GraphState):
 
     question = state["question"]
     documents = state["documents"]
+    documents_text = "\n\n-----\n\n".join([doc.page_content for doc in documents])
     generation = state["generation"]
 
     score = hallucination_grader.invoke(
-        {"documents": documents, "generation": generation}
+        {"documents": documents_text, "generation": generation}
     )
     if hallucination_grade := score.binary_score:
         print("---DECISION: GENERATION IS GROUNDED IN DOCUMENTS---")

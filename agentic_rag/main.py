@@ -1,11 +1,10 @@
 from dotenv import load_dotenv
 
+load_dotenv()
+
 from graph.graph import app
 
 
-load_dotenv()
-
-
 if __name__ == "__main__":
-    question = "What is agent memory in context of LLMs?"
+    question = "What is React?"
     print(app.invoke(input={"question": question}))

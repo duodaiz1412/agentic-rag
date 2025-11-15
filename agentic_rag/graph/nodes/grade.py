@@ -33,8 +33,12 @@ def grade_documents(state: GraphState) -> Dict[str, Any]:
             print("---DOCUMENT IS NOT RELEVANT---")
             use_web_search = True
             continue
+    if not filtered_documents:
+        use_web_search = True
+
     return {
         "documents": filtered_documents,
         "use_web_search": use_web_search,
         "question": question,
+        "user_id": state.get("user_id"),
     }

@@ -22,6 +22,7 @@ langchain-openai = "0.1.8"
 langchain-google-genai = "1.0.7"
 fastembed = "0.3.3"
 gradio = "4.44.0"
+psycopg2-binary = "2.9.9"
 
 
 [build-system]
