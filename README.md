@@ -67,6 +67,72 @@ cd agentic_rag
 poetry run python ui.py
 ```
 
+To run the FastAPI server:
+
+```sh
+cd agentic_rag
+poetry run python run_api.py
+```
+
+Or directly:
+
+```sh
+poetry run uvicorn agentic_rag.api:api_app --host 0.0.0.0 --port 8001 --reload
+```
+
+**Note:** The RAG API runs on port **8001** to avoid conflict with the Spring Boot backend (port 8000).
+
+The API will be available at `http://localhost:8001`
+- API docs: `http://localhost:8001/docs` (Swagger UI)
+- Alternative docs: `http://localhost:8001/redoc` (ReDoc)
+
+## API Endpoints
+
+### POST `/api/v1/rag/ask`
+
+Ask a question to the Agentic RAG system.
+
+**Request Body:**
+```json
+{
+  "question": "What is React?",
+  "user_id": "optional-user-uuid",
+  "chat_history": [
+    {
+      "question": "Hello",
+      "answer": "Hi! How can I help you?"
+    }
+  ]
+}
+```
+
+**Response:**
+```json
+{
+  "answer": "React is a JavaScript library...",
+  "trace": "---ROUTE QUESTION---\n...",
+  "sources": [
+    {
+      "source": "course_123",
+      "title": "React Fundamentals",
+      "course_id": "course_123",
+      "course_name": "React Fundamentals",
+      "chapter_id": "chapter_456",
+      "chapter_name": "Introduction",
+      "lesson_id": "lesson_789",
+      "lesson_name": "What is React?",
+      "metadata": {}
+    }
+  ],
+  "chat_history": [
+    {
+      "question": "What is React?",
+      "answer": "React is a JavaScript library..."
+    }
+  ]
+}
+```
+
 ## Acknowledgements
 
 - https://www.youtube.com/watch?v=NZbgduKl9Zk

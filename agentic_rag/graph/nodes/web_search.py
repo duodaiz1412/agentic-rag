@@ -45,4 +45,5 @@ def web_search(state: GraphState) -> Dict[str, Any]:
         "documents": documents,
         "question": question,
         "user_id": state.get("user_id"),
+        "chat_history": state.get("chat_history", []),
     }

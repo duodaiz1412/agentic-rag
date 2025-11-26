@@ -23,6 +23,9 @@ langchain-google-genai = "1.0.7"
 fastembed = "0.3.3"
 gradio = "4.44.0"
 psycopg2-binary = "2.9.9"
+fastapi = "0.115.0"
+uvicorn = {extras = ["standard"], version = "0.32.0"}
+pydantic = "2.9.2"
 
 
 [build-system]

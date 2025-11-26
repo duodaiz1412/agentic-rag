@@ -41,4 +41,5 @@ def grade_documents(state: GraphState) -> Dict[str, Any]:
         "use_web_search": use_web_search,
         "question": question,
         "user_id": state.get("user_id"),
+        "chat_history": state.get("chat_history", []),
     }

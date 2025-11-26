@@ -132,3 +132,120 @@ def fetch_user_enrollments(user_id: str) -> Set[str]:
             rows = cur.fetchall()
     return {str(row[0]) for row in rows}
 
+
+def fetch_course_structure(course_id: str | None = None) -> List[Dict[str, object]]:
+    """
+    Fetch course structure with chapters and lessons sorted by position.
+    If course_id is provided, only fetch that course. If None, fetch all courses.
+    
+    Returns:
+        List of dicts with structure:
+        {
+            "course_id": str,
+            "course_title": str,
+            "course_description": str,
+            "course_skill_level": str,
+            "chapters": [
+                {
+                    "chapter_id": str,
+                    "chapter_title": str,
+                    "chapter_summary": str,
+                    "position": int,
+                    "lessons": [
+                        {
+                            "lesson_id": str,
+                            "lesson_title": str,
+                            "position": int,
+                            "has_video": bool,
+                            "has_file": bool
+                        }
+                    ]
+                }
+            ]
+        }
+    """
+    if course_id:
+        course_filter = "WHERE courses.id = %s"
+        params = (course_id,)
+    else:
+        course_filter = ""
+        params = None
+    
+    query = f"""
+        SELECT
+            courses.id AS course_id,
+            courses.title AS course_title,
+            courses.description AS course_description,
+            courses.skill_level AS course_skill_level,
+            courses.target_audience AS course_target_audience,
+            courses.language AS course_language,
+            chapters.id AS chapter_id,
+            chapters.title AS chapter_title,
+            chapters.summary AS chapter_summary,
+            chapters.position AS chapter_position,
+            lessons.id AS lesson_id,
+            lessons.title AS lesson_title,
+            lessons.position AS lesson_position,
+            CASE WHEN lessons.video_url IS NOT NULL THEN TRUE ELSE FALSE END AS has_video,
+            CASE WHEN lessons.file_url IS NOT NULL THEN TRUE ELSE FALSE END AS has_file
+        FROM courses
+        LEFT JOIN chapters ON chapters.course_id = courses.id
+        LEFT JOIN lessons ON lessons.chapter_id = chapters.id AND lessons.course_id = courses.id
+        {course_filter}
+        ORDER BY courses.title, chapters.position NULLS LAST, lessons.position NULLS LAST;
+    """
+    
+    with get_connection() as conn:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute(query, params)
+            rows = list(cur.fetchall())
+    
+    # Group vào structure
+    courses_dict: Dict[str, Dict[str, object]] = {}
+    chapters_dict: Dict[str, Dict[str, object]] = {}
+    
+    for row in rows:
+        course_id_str = str(row["course_id"]) if row["course_id"] else None
+        if not course_id_str:
+            continue
+            
+        # Initialize course
+        if course_id_str not in courses_dict:
+            courses_dict[course_id_str] = {
+                "course_id": course_id_str,
+                "course_title": row.get("course_title"),
+                "course_description": row.get("course_description"),
+                "course_skill_level": row.get("course_skill_level"),
+                "course_target_audience": row.get("course_target_audience"),
+                "course_language": row.get("course_language"),
+                "chapters": [],
+            }
+        
+        # Add chapter if exists
+        chapter_id_str = str(row["chapter_id"]) if row["chapter_id"] else None
+        if chapter_id_str and chapter_id_str not in chapters_dict:
+            chapter_data = {
+                "chapter_id": chapter_id_str,
+                "chapter_title": row.get("chapter_title"),
+                "chapter_summary": row.get("chapter_summary"),
+                "position": row.get("chapter_position"),
+                "lessons": [],
+            }
+            chapters_dict[chapter_id_str] = chapter_data
+            courses_dict[course_id_str]["chapters"].append(chapter_data)
+        
+        # Add lesson if exists
+        lesson_id_str = str(row["lesson_id"]) if row["lesson_id"] else None
+        if lesson_id_str and chapter_id_str:
+            chapter_data = chapters_dict[chapter_id_str]
+            lesson_data = {
+                "lesson_id": lesson_id_str,
+                "lesson_title": row.get("lesson_title"),
+                "position": row.get("lesson_position"),
+                "has_video": row.get("has_video", False),
+                "has_file": row.get("has_file", False),
+            }
+            chapter_data["lessons"].append(lesson_data)
+    
+    return list(courses_dict.values())
+

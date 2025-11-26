@@ -2,8 +2,9 @@ from dotenv import load_dotenv
 
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.pydantic_v1 import BaseModel, Field
-from langchain_core.runnables import RunnableSequence
-from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_core.runnables import RunnableLambda, RunnableSequence
+
+from graph.chains.llm_config import create_llm, rate_limit_delay
 
 load_dotenv()
 
@@ -16,7 +17,7 @@ class GradeHallucinations(BaseModel):
     )
 
 
-llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash", temperature=0)
+llm = create_llm(model="gemini-2.5-flash", temperature=0)
 
 structured_llm_grader = llm.with_structured_output(GradeHallucinations)
 
@@ -29,4 +30,13 @@ hallucination_prompt = ChatPromptTemplate.from_messages(
     ]
 )
 
-hallucination_grader: RunnableSequence = hallucination_prompt | structured_llm_grader
+base_grader: RunnableSequence = hallucination_prompt | structured_llm_grader
+
+
+def _rate_limited_invoke(input_dict: dict):
+    """Wrapper to add rate limiting to hallucination grader chain"""
+    rate_limit_delay()
+    return base_grader.invoke(input_dict)
+
+
+hallucination_grader = RunnableLambda(_rate_limited_invoke)

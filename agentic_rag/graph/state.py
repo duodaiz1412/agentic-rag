@@ -1,4 +1,4 @@
-from typing import List, TypedDict
+from typing import List, Tuple, TypedDict
 
 from langchain_core.documents import Document
 
@@ -14,6 +14,7 @@ class GraphState(TypedDict, total=False):
         documents: List of documents
         sources: List of metadata for surfaced documents
         user_id: Optional user identifier for permission checks
+        chat_history: List of tuples (question, answer) for conversation context
     """
 
     question: str
@@ -22,3 +23,4 @@ class GraphState(TypedDict, total=False):
     documents: List[Document]
     sources: List[dict]
     user_id: str
+    chat_history: List[Tuple[str, str]]

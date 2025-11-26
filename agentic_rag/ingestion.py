@@ -24,7 +24,7 @@ CHROMA_COLLECTION = os.getenv("CHROMA_COLLECTION_NAME", "rag-edtech")
 CHROMA_PERSIST_DIR = os.getenv("CHROMA_PERSIST_DIR", "./.chroma")
 CHUNK_SIZE = int(os.getenv("RAG_CHUNK_SIZE", "700"))
 CHUNK_OVERLAP = int(os.getenv("RAG_CHUNK_OVERLAP", "120"))
-TRANSCRIPTS_DIR = os.getenv("TRANSCRIPTS_DIR", "../transcription-worker/transcripts")
+TRANSCRIPTS_DIR = os.getenv("TRANSCRIPTS_DIR", "../../transcription-worker/transcripts")
 
 
 def _isoformat(value: Optional[object]) -> Optional[str]:
@@ -165,10 +165,14 @@ def _build_lesson_documents(
 
 
 def _load_transcript_files() -> List[Dict[str, Any]]:
-    """Đọc tất cả transcript files từ thư mục transcripts"""
+    """Load all transcript files from the transcripts directory"""
     transcripts_dir = Path(TRANSCRIPTS_DIR)
+    # Resolve to absolute path for better error messages
+    transcripts_dir = transcripts_dir.resolve()
+    
     if not transcripts_dir.exists():
         print(f"[INGEST] Transcripts directory not found: {transcripts_dir}")
+        print(f"[INGEST] Please check TRANSCRIPTS_DIR environment variable or ensure the directory exists")
         return []
     
     transcripts = []
@@ -411,4 +415,4 @@ def build_vectorstore() -> Chroma:
 
 
 vectorstore = build_vectorstore()
-retriever = vectorstore.as_retriever(search_kwargs={"k": 4})
+retriever = vectorstore.as_retriever(search_kwargs={"k": 3})

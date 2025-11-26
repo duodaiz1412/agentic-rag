@@ -10,6 +10,7 @@ from graph.state import GraphState
 def retrieve(state: GraphState) -> Dict[str, Any]:
     """
     Retrieve documents from the retriever.
+    Enhances query with conversation history for better context-aware retrieval.
 
     Args:
         state: The current state of the graph.
@@ -20,8 +21,32 @@ def retrieve(state: GraphState) -> Dict[str, Any]:
     print("---RETRIEVE---")
     question = state["question"]
     user_id = state.get("user_id")
+    chat_history = state.get("chat_history", [])
 
-    documents: List[Document] = retriever.invoke(question)
+    # Enhance query with conversation history for follow-up questions
+    enhanced_query = question
+    if chat_history:
+        # Get the last question and answer for context
+        last_question, last_answer = chat_history[-1]
+        
+        # If current question is short/ambiguous, enhance with context
+        # Common follow-up patterns: "give me", "show me", "what about", "how about", "tell me more"
+        follow_up_keywords = [
+            "give me", "show me", "what about", "how about", "tell me more",
+            "example", "examples", "code", "demo", "demonstrate",
+            "cho tôi", "ví dụ", "code", "mẫu"
+        ]
+        
+        is_follow_up = any(keyword in question.lower() for keyword in follow_up_keywords)
+        
+        if is_follow_up or len(question.split()) < 5:
+            # Enhance query with context from previous conversation
+            enhanced_query = f"{last_question} {question} {last_answer[:200]}"
+            print(f"---ENHANCED QUERY WITH CONVERSATION CONTEXT---")
+            print(f"Original: {question}")
+            print(f"Enhanced: {enhanced_query[:200]}...")
+
+    documents: List[Document] = retriever.invoke(enhanced_query)
 
     if user_id:
         allowed_courses = fetch_user_enrollments(user_id)
@@ -38,4 +63,9 @@ def retrieve(state: GraphState) -> Dict[str, Any]:
                 print("---DOCUMENT FILTERED: USER LACKS ACCESS---")
         documents = filtered_documents
 
-    return {"documents": documents, "question": question, "user_id": user_id}
+    return {
+        "documents": documents,
+        "question": question,
+        "user_id": user_id,
+        "chat_history": state.get("chat_history", []),
+    }

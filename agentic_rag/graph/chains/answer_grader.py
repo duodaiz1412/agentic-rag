@@ -2,8 +2,9 @@ from dotenv import load_dotenv
 
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.pydantic_v1 import BaseModel, Field
-from langchain_core.runnables import RunnableSequence
-from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_core.runnables import RunnableLambda, RunnableSequence
+
+from graph.chains.llm_config import create_llm, rate_limit_delay
 
 load_dotenv()
 
@@ -16,7 +17,7 @@ class GradeAnswer(BaseModel):
     )
 
 
-llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash", temperature=0)
+llm = create_llm(model="gemini-2.5-flash", temperature=0)
 structured_llm_grader = llm.with_structured_output(GradeAnswer)
 
 message = """You are a grader assessing whether an answer addresses / resolves a question \n 
@@ -28,4 +29,13 @@ answer_prompt = ChatPromptTemplate.from_messages(
     ]
 )
 
-answer_grader: RunnableSequence = answer_prompt | structured_llm_grader
+base_grader: RunnableSequence = answer_prompt | structured_llm_grader
+
+
+def _rate_limited_invoke(input_dict: dict):
+    """Wrapper to add rate limiting to answer grader chain"""
+    rate_limit_delay()
+    return base_grader.invoke(input_dict)
+
+
+answer_grader = RunnableLambda(_rate_limited_invoke)

@@ -3,7 +3,9 @@ from typing import Literal
 from dotenv import load_dotenv
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.pydantic_v1 import BaseModel, Field
-from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_core.runnables import RunnableLambda
+
+from graph.chains.llm_config import create_llm, rate_limit_delay
 
 load_dotenv()
 
@@ -17,7 +19,7 @@ class RouteQuery(BaseModel):
     )
 
 
-llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash", temperature=0)
+llm = create_llm(model="gemini-2.5-flash", temperature=0)
 structured_llm_router = llm.with_structured_output(RouteQuery)
 
 message = """You are an expert router that decides whether a user's question should be answered using the internal vectorstore or web search.
@@ -54,4 +56,13 @@ router_prompt = ChatPromptTemplate.from_messages(
     [("system", message), ("human", "{question}")]
 )
 
-question_router = router_prompt | structured_llm_router
+base_router = router_prompt | structured_llm_router
+
+
+def _rate_limited_invoke(input_dict: dict):
+    """Wrapper to add rate limiting to router chain"""
+    rate_limit_delay()
+    return base_router.invoke(input_dict)
+
+
+question_router = RunnableLambda(_rate_limited_invoke)
