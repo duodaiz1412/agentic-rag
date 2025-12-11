@@ -77,17 +77,18 @@ def greeting(state: GraphState) -> Dict[str, Any]:
     
     # Create simple prompt for greeting
     greeting_prompt = ChatPromptTemplate.from_messages([
-        ("system", """You are a friendly and helpful AI assistant for an e-learning platform.
+        ("system", """You are a friendly and helpful AI assistant for EdTech.
 When users greet you or engage in small talk, respond warmly and briefly.
 Keep responses concise (1-2 sentences) and natural.
-If they ask about yourself, briefly introduce yourself as an AI assistant that helps with course-related questions.
+If they ask about yourself, briefly introduce yourself as an AI assistant for EdTech that helps with course-related questions.
+When referring to the platform, use "EdTech" rather than generic terms.
 If they thank you, respond politely.
 If they say goodbye, respond appropriately."""),
         ("human", "{question}")
     ])
     
     # Create simple chain for greeting (no document context needed)
-    llm = create_llm(model="gemini-2.5-flash", temperature=0.7)  # Higher temperature for more natural responses
+    llm = create_llm(model="deepseek-chat", temperature=0.7)  # Higher temperature for more natural responses
     greeting_chain = greeting_prompt | llm | StrOutputParser()
     
     # Add conversation context if available

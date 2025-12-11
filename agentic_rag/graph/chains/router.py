@@ -19,38 +19,52 @@ class RouteQuery(BaseModel):
     )
 
 
-llm = create_llm(model="gemini-2.5-flash", temperature=0)
+llm = create_llm(model="deepseek-chat", temperature=0)
 structured_llm_router = llm.with_structured_output(RouteQuery)
 
-message = """You are an expert router that decides whether a user's question should be answered using the internal vectorstore or web search.
+message = """You are an expert router for EdTech that decides whether a user's question should be answered using the internal vectorstore or web search.
 
-The vectorstore contains educational content from an e-learning platform including:
+The vectorstore contains educational content from EdTech including:
 - Course overviews and descriptions
 - Lesson content (text, video transcripts, attachments)
 - Audio transcripts from video lessons (translated to English when available)
+- Knowledge base guides (how to use the platform, create courses, enroll, etc.)
 - Topics covering: programming, databases (PostgreSQL, MySQL, etc.), web development, software engineering, and various technical subjects
 
-Routing rules:
+CRITICAL ROUTING RULES - This is an EDUCATIONAL PLATFORM, NOT a general-purpose assistant:
 
-1. Route to **vectorstore** for questions about:
+1. Route to **vectorstore** for ALL questions about:
    - Course content, lessons, transcripts, or educational materials
    - Technical concepts, definitions, explanations (programming, SQL, frameworks, algorithms, etc.)
-   - How-to guidance, code examples, tutorials, or walkthroughs that could be in course materials
-   - Any educational/technical content that might be covered in courses
+   - How-to guidance, code examples, tutorials, or walkthroughs
+   - Platform usage (how to create courses, enroll, publish, etc.)
+   - Learning and educational topics
+   - ANY question that could be answered from course materials or platform knowledge base
 
-2. Route to **web_search** only when:
-   - User explicitly asks for current/time-sensitive info (news, latest releases, version numbers, CVEs, "today", "2025", etc.)
-   - Question is clearly outside course scope (general news, politics, sports, weather, real-time data, etc.)
-   - User explicitly requests external sources or citations
+2. Route to **web_search** ONLY when ALL of these conditions are met:
+   - Question is SPECIFICALLY about current/time-sensitive technical information (latest framework version, recent CVE, breaking changes in 2025, etc.)
+   - Question is DIRECTLY related to course topics or educational content
+   - Information cannot be found in course materials (e.g., "What's the latest React version?" for a React course)
+   - Question is NOT about general topics (news, politics, sports, weather, entertainment, etc.)
 
-3. When uncertain:
-   - Default to **vectorstore** (it contains comprehensive educational content)
-   - Only use web_search if question clearly requires real-time or external information
+3. STRICTLY FORBIDDEN for web_search:
+   - General knowledge questions unrelated to courses
+   - Questions about current events, news, politics, sports
+   - Questions about weather, entertainment, celebrities
+   - Personal questions or general conversation
+   - Questions that can be answered from course materials or knowledge base
+   - Questions about platform usage (these are in knowledge base)
 
-Important:
-- Prefer vectorstore when in doubt - it has extensive educational content
-- The vectorstore contains English content; route to vectorstore if question is in English or about technical topics
-- Be conservative: only route to web_search when absolutely necessary for current events or external sources
+4. When uncertain:
+   - ALWAYS default to **vectorstore**
+   - Only use web_search if question is SPECIFICALLY about current technical info related to course topics
+   - If question seems unrelated to education/courses, route to vectorstore and let it handle gracefully
+
+IMPORTANT:
+- This is an EDUCATIONAL PLATFORM - stay focused on learning and courses
+- Prefer vectorstore in 95% of cases - it has comprehensive educational content
+- Be VERY conservative with web_search - only for current technical info related to course topics
+- If question is not about courses/education/platform, route to vectorstore anyway (it will provide appropriate response)
 """
 router_prompt = ChatPromptTemplate.from_messages(
     [("system", message), ("human", "{question}")]

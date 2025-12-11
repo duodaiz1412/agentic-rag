@@ -249,3 +249,50 @@ def fetch_course_structure(course_id: str | None = None) -> List[Dict[str, objec
     
     return list(courses_dict.values())
 
+
+def fetch_course_slug(course_id: str) -> str | None:
+    """
+    Fetch course slug from course_id.
+    
+    Args:
+        course_id: The course ID to fetch slug for
+        
+    Returns:
+        Course slug if found, None otherwise
+    """
+    query = """
+        SELECT slug
+        FROM courses
+        WHERE id = %s;
+    """
+    with get_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(query, (course_id,))
+            row = cur.fetchone()
+            return row[0] if row else None
+
+
+def fetch_courses_slugs(course_ids: List[str]) -> Dict[str, str]:
+    """
+    Fetch course slugs for multiple course IDs.
+    
+    Args:
+        course_ids: List of course IDs (as strings) to fetch slugs for
+        
+    Returns:
+        Dictionary mapping course_id (as string) to slug
+    """
+    if not course_ids:
+        return {}
+    
+    query = """
+        SELECT id::text, slug
+        FROM courses
+        WHERE id::text = ANY(%s);
+    """
+    with get_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(query, (course_ids,))
+            rows = cur.fetchall()
+    return {str(row[0]): row[1] for row in rows if row[1]}
+

@@ -30,11 +30,14 @@ To get started, follow these steps:
 3. **Set up environment variables**:
     Create a `.env` file in the root directory and add necessary environment variables.
     ```sh
-    GOOGLE_API_KEY
+    DEEPSEEK_API_KEY
     TAVILY_API_KEY
     LANGCHAIN_API_KEY
     LANGCHAIN_TRACING_V2
     LANGCHAIN_PROJECT
+    
+    # Optional: DeepSeek rate limit configuration (default: 100 requests/minute)
+    DEEPSEEK_RATE_LIMIT_PER_MINUTE=100
 
     # Database connection (defaults align với backend `api-edtech`)
     RAG_DB_HOST=localhost
@@ -49,6 +52,9 @@ To get started, follow these steps:
     RAG_CHUNK_SIZE=700
     RAG_CHUNK_OVERLAP=120
     USER_AGENT=agentic-rag/0.1 (local)
+    
+    # Knowledge base directory (optional, defaults to ./knowledge-base)
+    KNOWLEDGE_BASE_DIR=./knowledge-base
     ```
 
 ## Usage
@@ -85,6 +91,26 @@ poetry run uvicorn agentic_rag.api:api_app --host 0.0.0.0 --port 8001 --reload
 The API will be available at `http://localhost:8001`
 - API docs: `http://localhost:8001/docs` (Swagger UI)
 - Alternative docs: `http://localhost:8001/redoc` (ReDoc)
+
+## Knowledge Base
+
+The RAG system includes a knowledge base built from markdown files located in the `knowledge-base/` directory. These files contain guides and documentation for both instructors and students.
+
+### Knowledge Base Structure
+
+- `instructor-guide/`: Guides for course creators
+- `user-guide/`: Guides for students and learners  
+- `faq/`: Frequently asked questions
+
+### Ingestion
+
+Knowledge base files are automatically ingested when running the ingestion script. The system:
+- Loads all `.md` files from the knowledge base directory
+- Extracts titles and categories from file structure
+- Creates vector embeddings using FastEmbed (local, no API costs)
+- Makes content searchable through the RAG system
+
+See `knowledge-base/README.md` for more details about the knowledge base structure and content.
 
 ## API Endpoints
 

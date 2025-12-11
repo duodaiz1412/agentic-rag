@@ -26,6 +26,21 @@ CHUNK_SIZE = int(os.getenv("RAG_CHUNK_SIZE", "700"))
 CHUNK_OVERLAP = int(os.getenv("RAG_CHUNK_OVERLAP", "120"))
 TRANSCRIPTS_DIR = os.getenv("TRANSCRIPTS_DIR", "../../transcription-worker/transcripts")
 
+# Resolve knowledge-base directory relative to project root (not current working directory)
+# Default: ../knowledge-base (from agentic_rag/ directory) or ./knowledge-base (from project root)
+_default_kb_dir = os.getenv("KNOWLEDGE_BASE_DIR")
+if _default_kb_dir is None:
+    # Try to find knowledge-base relative to this file's location
+    _current_file_dir = Path(__file__).parent  # agentic_rag/
+    _project_root = _current_file_dir.parent  # project root
+    _kb_path = _project_root / "knowledge-base"
+    if _kb_path.exists():
+        _default_kb_dir = str(_kb_path)
+    else:
+        _default_kb_dir = "./knowledge-base"  # Fallback to relative path
+
+KNOWLEDGE_BASE_DIR = os.getenv("KNOWLEDGE_BASE_DIR", _default_kb_dir)
+
 
 def _isoformat(value: Optional[object]) -> Optional[str]:
     if value is None:
@@ -333,6 +348,128 @@ def _build_transcript_documents(
     return documents
 
 
+def _load_markdown_files() -> List[Dict[str, Any]]:
+    """Load all markdown files from the knowledge-base directory"""
+    kb_dir = Path(KNOWLEDGE_BASE_DIR)
+    # Resolve to absolute path for better error messages
+    kb_dir = kb_dir.resolve()
+    
+    if not kb_dir.exists():
+        print(f"[INGEST] Knowledge base directory not found: {kb_dir}")
+        print(f"[INGEST] Please check KNOWLEDGE_BASE_DIR environment variable or ensure the directory exists")
+        return []
+    
+    markdown_files = []
+    # Recursively find all .md files
+    for md_file in kb_dir.rglob("*.md"):
+        # Skip README.md files (they're documentation, not guides)
+        if md_file.name.lower() == "readme.md":
+            continue
+            
+        try:
+            with open(md_file, "r", encoding="utf-8") as f:
+                content = f.read()
+                
+            # Extract relative path from knowledge-base root
+            try:
+                relative_path = md_file.relative_to(kb_dir)
+            except ValueError:
+                # If can't get relative path, use filename
+                relative_path = Path(md_file.name)
+            
+            # Determine category from directory structure
+            category = "unknown"
+            parts = relative_path.parts
+            if len(parts) > 0:
+                parent_dir = parts[0].lower()
+                if "instructor" in parent_dir or "instructor-guide" in parent_dir:
+                    category = "instructor_guide"
+                elif "user" in parent_dir or "user-guide" in parent_dir:
+                    category = "user_guide"
+                elif "faq" in parent_dir:
+                    category = "faq"
+            
+            # Extract title from first H1 heading
+            title = None
+            lines = content.split("\n")
+            for line in lines:
+                line_stripped = line.strip()
+                if line_stripped.startswith("# ") and len(line_stripped) > 2:
+                    title = line_stripped[2:].strip()
+                    break
+            
+            # If no H1 found, use filename (without extension) as title
+            if not title:
+                title = md_file.stem.replace("-", " ").replace("_", " ").title()
+            
+            markdown_files.append({
+                "file_path": str(relative_path),
+                "absolute_path": str(md_file),
+                "content": content,
+                "title": title,
+                "category": category,
+                "last_modified": md_file.stat().st_mtime,
+            })
+            
+            print(
+                f"[INGEST] Loaded markdown | "
+                f"file={relative_path} | "
+                f"category={category} | "
+                f"title={title[:50] if len(title) > 50 else title} | "
+                f"size={len(content)} chars"
+            )
+        except Exception as e:
+            print(f"[INGEST] Failed to load markdown {md_file}: {e}")
+            continue
+    
+    print(f"[INGEST] Total markdown files loaded: {len(markdown_files)}")
+    return markdown_files
+
+
+def _build_knowledge_documents(
+    markdown_files: List[Dict[str, Any]]
+) -> List[Document]:
+    """Create Document objects from markdown knowledge base files"""
+    documents: List[Document] = []
+    
+    for md_data in markdown_files:
+        content = md_data["content"]
+        if not content or not content.strip():
+            continue
+        
+        # Use the full markdown content
+        # The text splitter will handle chunking later
+        page_content = content.strip()
+        
+        metadata = {
+            "document_id": f"knowledge_base:{md_data['file_path']}",
+            "doc_type": "knowledge_base",
+            "category": md_data["category"],
+            "file_path": md_data["file_path"],
+            "title": md_data["title"],
+            "last_modified": _isoformat(md_data.get("last_modified")),
+            "requires_enrollment": False,  # Knowledge base is public
+        }
+        
+        documents.append(
+            Document(
+                page_content=page_content,
+                metadata=_sanitize_metadata(metadata)
+            )
+        )
+        
+        print(
+            f"[INGEST] Created knowledge base document | "
+            f"file={md_data['file_path']} | "
+            f"category={md_data['category']} | "
+            f"title={md_data['title'][:50] if len(md_data['title']) > 50 else md_data['title']} | "
+            f"contentLength={len(page_content)} chars"
+        )
+    
+    print(f"[INGEST] Total knowledge base documents created: {len(documents)}")
+    return documents
+
+
 def load_documents() -> List[Document]:
     lessons = fetch_lessons_with_context()
     courses = fetch_courses()
@@ -341,11 +478,15 @@ def load_documents() -> List[Document]:
     
     # Load transcripts từ thư mục transcripts
     transcripts = _load_transcript_files()
+    
+    # Load markdown knowledge base files
+    markdown_files = _load_markdown_files()
 
     documents = []
     documents.extend(_build_course_documents(courses, tags, labels))
     documents.extend(_build_lesson_documents(lessons, tags, labels))
     documents.extend(_build_transcript_documents(transcripts, lessons, tags, labels))
+    documents.extend(_build_knowledge_documents(markdown_files))
     return documents
 
 
@@ -415,4 +556,8 @@ def build_vectorstore() -> Chroma:
 
 
 vectorstore = build_vectorstore()
-retriever = vectorstore.as_retriever(search_kwargs={"k": 3})
+retriever = vectorstore.as_retriever(search_kwargs={"k": 7})
+
+# Note: langchain_chroma does not support 'where' filter in search_kwargs
+# Metadata filtering is done in retrieve.py node using post-filter approach
+# This is still efficient as it filters after retrieval but before batch grading

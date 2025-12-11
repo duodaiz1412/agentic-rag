@@ -17,7 +17,7 @@ class GradeHallucinations(BaseModel):
     )
 
 
-llm = create_llm(model="gemini-2.5-flash", temperature=0)
+llm = create_llm(model="deepseek-chat", temperature=0)
 
 structured_llm_grader = llm.with_structured_output(GradeHallucinations)
 

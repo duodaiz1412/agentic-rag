@@ -3,7 +3,7 @@ from typing import Any, Dict, List
 from langchain_core.documents import Document
 
 from database import fetch_course_structure
-from graph.chains.generation import generation_chain
+from graph.chains.generation import generation_chain, generation_chain_platform
 from graph.state import GraphState
 
 SOURCE_KEYS = [
@@ -233,6 +233,19 @@ def generate(state: GraphState) -> Dict[str, Any]:
     question = state["question"]
     documents = state["documents"]
     chat_history = state.get("chat_history", [])
+    regeneration_count = state.get("regeneration_count") or 0
+    
+    # Increment regeneration count if this is a regeneration attempt
+    # (regeneration happens when coming back from grade_generation_grounded_in_documents_and_question with "not_supported")
+    # Check if there's already a generation in state, which means this is a retry
+    if state.get("generation") and regeneration_count == 0:
+        # First regeneration attempt
+        regeneration_count = 1
+        print(f"---REGENERATION ATTEMPT #1---")
+    elif regeneration_count > 0:
+        # Subsequent regeneration attempts
+        regeneration_count += 1
+        print(f"---REGENERATION ATTEMPT #{regeneration_count}---")
     
     # Build conversation context
     conversation_context = _build_conversation_context(chat_history)
@@ -298,21 +311,37 @@ def generate(state: GraphState) -> Dict[str, Any]:
         # Regular question
         context = _build_context(documents)
         
-        # Add conversation context if available - place it BEFORE documents for better context understanding
-        if conversation_context:
-            # Put conversation history first so LLM sees it first
-            enhanced_context = f"{conversation_context}\n\n## RETRIEVED DOCUMENTS:\n\n{context}"
-            # Add instruction to use conversation history
-            enhanced_context = (
-                "INSTRUCTIONS: The user's current question may be a follow-up to previous questions. "
-                "Please read the CONVERSATION HISTORY above to understand the context. "
-                "Then answer the current question using both the conversation history and the retrieved documents below.\n\n"
-                + enhanced_context
-            )
-        else:
-            enhanced_context = context
+        # Check if this is a platform question with primarily knowledge-base documents
+        # Use concise prompt for platform/knowledge-base questions
+        is_platform_question = state.get("is_platform_question", False)
+        kb_doc_count = sum(1 for doc in documents if (doc.metadata or {}).get("doc_type") == "knowledge_base")
+        is_mostly_kb = kb_doc_count > 0 and kb_doc_count >= len(documents) * 0.5  # At least 50% KB docs
         
-        generation = generation_chain.invoke({"context": enhanced_context, "question": question})
+        if is_platform_question and is_mostly_kb:
+            print("---PLATFORM QUESTION WITH KB DOCS - USING CONCISE PROMPT---")
+            # For platform questions with KB docs, use concise prompt (like knowledge base docs)
+            if conversation_context:
+                enhanced_context = f"{conversation_context}\n\n## RETRIEVED DOCUMENTS:\n\n{context}"
+            else:
+                enhanced_context = context
+            generation = generation_chain_platform.invoke({"context": enhanced_context, "question": question})
+        else:
+            # Regular generation with comprehensive prompt
+            # Add conversation context if available - place it BEFORE documents for better context understanding
+            if conversation_context:
+                # Put conversation history first so LLM sees it first
+                enhanced_context = f"{conversation_context}\n\n## RETRIEVED DOCUMENTS:\n\n{context}"
+                # Add instruction to use conversation history
+                enhanced_context = (
+                    "INSTRUCTIONS: The user's current question may be a follow-up to previous questions. "
+                    "Please read the CONVERSATION HISTORY above to understand the context. "
+                    "Then answer the current question using both the conversation history and the retrieved documents below.\n\n"
+                    + enhanced_context
+                )
+            else:
+                enhanced_context = context
+            
+            generation = generation_chain.invoke({"context": enhanced_context, "question": question})
     
     sources = _extract_sources(documents)
     
@@ -326,5 +355,9 @@ def generate(state: GraphState) -> Dict[str, Any]:
         "question": question,
         "sources": sources,
         "user_id": state.get("user_id"),
+        "lesson_id": state.get("lesson_id"),  # Preserve lesson_id
+        "is_platform_question": state.get("is_platform_question", False),  # Preserve platform question flag
         "chat_history": updated_history,
+        "regeneration_count": regeneration_count,
+        "web_search_count": state.get("web_search_count") or 0,  # Preserve web search count
     }

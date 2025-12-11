@@ -8,7 +8,7 @@ from graph.chains.llm_config import create_llm, rate_limit_delay
 
 load_dotenv()
 
-llm = create_llm(model="gemini-2.5-flash", temperature=0)
+llm = create_llm(model="deepseek-chat", temperature=0)
 
 
 class GradeDocuments(BaseModel):
