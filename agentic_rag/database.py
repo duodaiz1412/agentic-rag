@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 import os
+import time
 from contextlib import contextmanager
 from typing import Dict, List, Set, Tuple
 
 import psycopg2
 from psycopg2.extras import RealDictCursor
+from psycopg2 import OperationalError
 
 
 def _db_config() -> Dict[str, str]:
@@ -20,13 +22,38 @@ def _db_config() -> Dict[str, str]:
 
 
 @contextmanager
-def get_connection():
+def get_connection(max_retries: int = 3, retry_delay: float = 2.0):
+    """
+    Get a database connection with retry logic.
+    
+    Args:
+        max_retries: Maximum number of connection retry attempts
+        retry_delay: Delay in seconds between retry attempts
+    """
     config = _db_config()
-    conn = psycopg2.connect(**config)
-    try:
-        yield conn
-    finally:
-        conn.close()
+    last_error = None
+    
+    for attempt in range(max_retries):
+        try:
+            conn = psycopg2.connect(**config)
+            try:
+                yield conn
+            finally:
+                conn.close()
+            return
+        except OperationalError as e:
+            last_error = e
+            if attempt < max_retries - 1:
+                print(f"Database connection failed (attempt {attempt + 1}/{max_retries}): {e}")
+                print(f"Retrying in {retry_delay} seconds...")
+                time.sleep(retry_delay)
+            else:
+                print(f"Database connection failed after {max_retries} attempts")
+                raise
+    
+    # If we get here, all retries failed
+    if last_error:
+        raise last_error
 
 
 def fetch_lessons_with_context() -> List[Dict[str, object]]:

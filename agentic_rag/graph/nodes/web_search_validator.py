@@ -13,7 +13,8 @@ from dotenv import load_dotenv
 from graph.chains.llm_config import create_llm, rate_limit_delay
 from graph.state import GraphState
 
-load_dotenv()
+# Only load .env file if not in Docker (override=False prevents overriding existing env vars)
+load_dotenv(override=False)
 
 
 class WebSearchValidation(BaseModel):

@@ -1,7 +1,8 @@
 from dotenv import load_dotenv
 from pprint import pprint
 
-load_dotenv()
+# Only load .env file if not in Docker (override=False prevents overriding existing env vars)
+load_dotenv(override=False)
 
 from agentic_rag.graph.chains.retrieval_grader import GradeDocuments, retrieval_grader
 from agentic_rag.graph.chains.hallucination_grader import (

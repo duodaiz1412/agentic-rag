@@ -11,7 +11,8 @@ from typing import Any, Optional
 from dotenv import load_dotenv
 from langchain_openai import ChatOpenAI
 
-load_dotenv()
+# Only load .env file if not in Docker (override=False prevents overriding existing env vars)
+load_dotenv(override=False)
 
 # Rate limiting configuration
 # DeepSeek API rate limits vary by tier

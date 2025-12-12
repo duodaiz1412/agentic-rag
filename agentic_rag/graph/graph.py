@@ -17,7 +17,8 @@ from graph.nodes import (
 )
 
 
-load_dotenv()
+# Only load .env file if not in Docker (override=False prevents overriding existing env vars)
+load_dotenv(override=False)
 
 
 def decide_to_generate(state):

@@ -11,7 +11,8 @@ from langchain_core.documents import Document
 from graph.graph import app
 
 
-load_dotenv()
+# Only load .env file if not in Docker (override=False prevents overriding existing env vars)
+load_dotenv(override=False)
 
 
 def _format_metadata(metadata: dict | None) -> str:

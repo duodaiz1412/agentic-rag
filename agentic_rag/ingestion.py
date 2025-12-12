@@ -18,7 +18,9 @@ from database import (
     fetch_tags,
 )
 
-load_dotenv()
+# Only load .env file if not in Docker (override=False prevents overriding existing env vars)
+# In Docker, environment variables are set by docker-compose.yml
+load_dotenv(override=False)
 
 CHROMA_COLLECTION = os.getenv("CHROMA_COLLECTION_NAME", "rag-edtech")
 CHROMA_PERSIST_DIR = os.getenv("CHROMA_PERSIST_DIR", "./.chroma")

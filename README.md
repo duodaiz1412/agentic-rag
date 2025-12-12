@@ -83,14 +83,14 @@ poetry run python run_api.py
 Or directly:
 
 ```sh
-poetry run uvicorn agentic_rag.api:api_app --host 0.0.0.0 --port 8001 --reload
+poetry run uvicorn agentic_rag.api:api_app --host 0.0.0.0 --port 8002 --reload
 ```
 
-**Note:** The RAG API runs on port **8001** to avoid conflict with the Spring Boot backend (port 8000).
+**Note:** The RAG API runs on port **8002** to avoid conflict with the Spring Boot backend (port 8000).
 
-The API will be available at `http://localhost:8001`
-- API docs: `http://localhost:8001/docs` (Swagger UI)
-- Alternative docs: `http://localhost:8001/redoc` (ReDoc)
+The API will be available at `http://localhost:8002`
+- API docs: `http://localhost:8002/docs` (Swagger UI)
+- Alternative docs: `http://localhost:8002/redoc` (ReDoc)
 
 ## Knowledge Base
 

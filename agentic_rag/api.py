@@ -12,7 +12,7 @@ from typing import Dict, List, Optional, Set
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 
 # Ensure we can import graph module
 # When running as a package (agentic_rag.api), use relative import
@@ -29,7 +29,9 @@ except ImportError:
     from graph.graph import app
     from database import fetch_courses_slugs
 
-load_dotenv()
+# Only load .env file if not in Docker (override=False prevents overriding existing env vars)
+# In Docker, environment variables are set by docker-compose.yml
+load_dotenv(override=False)
 
 # Initialize FastAPI app
 api_app = FastAPI(
@@ -57,8 +59,8 @@ api_app.add_middleware(
 class ChatMessage(BaseModel):
     """Single chat message in conversation history"""
 
-    question: str = Field(..., description="User's question")
-    answer: str = Field(..., description="Assistant's answer")
+    question: Optional[str] = Field(None, description="User's question")
+    answer: Optional[str] = Field(None, description="Assistant's answer")
 
 
 class AskRequest(BaseModel):
@@ -202,11 +204,13 @@ async def ask_question(request: AskRequest) -> AskResponse:
 # New endpoint models for /api/v1/ask
 class AskV1Request(BaseModel):
     """Request model for /api/v1/ask endpoint"""
+    
+    model_config = ConfigDict(populate_by_name=True)  # Allow both snake_case and camelCase
 
     question: str = Field(..., description="The question to ask", min_length=1)
-    user_id: str = Field(..., description="User ID")
+    user_id: str = Field(..., alias="userId", description="User ID")
     chat_history: Optional[List[ChatMessage]] = Field(
-        default=None, description="Previous conversation history (only last 5 will be used)"
+        default=None, alias="chatHistory", description="Previous conversation history (only last 5 will be used)"
     )
 
 
@@ -259,10 +263,13 @@ async def ask_v1(request: AskV1Request) -> AskV1Response:
             payload["user_id"] = request.user_id.strip()
         
         # Only take last 5 questions from chat_history
+        # Filter out messages with null question or answer
         if request.chat_history:
             last_5_history = request.chat_history[-5:]
             payload["chat_history"] = [
-                (msg.question, msg.answer) for msg in last_5_history
+                (msg.question, msg.answer) 
+                for msg in last_5_history 
+                if msg.question and msg.answer  # Skip null/empty messages
             ]
 
         # Capture stdout for trace output (but don't include in response)
@@ -329,7 +336,7 @@ if __name__ == "__main__":
     uvicorn.run(
         "agentic_rag.api:api_app",
         host="0.0.0.0",
-        port=8001,  # Port 8001 to avoid conflict with Spring Boot backend (port 8000)
+        port=8002,  # Port 8002 to avoid conflict with Spring Boot backend (port 8000)
         reload=True,
     )
 

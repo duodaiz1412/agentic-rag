@@ -11,7 +11,8 @@ from langchain_core.runnables import RunnableLambda
 
 from graph.chains.llm_config import create_llm, rate_limit_delay
 
-load_dotenv()
+# Only load .env file if not in Docker (override=False prevents overriding existing env vars)
+load_dotenv(override=False)
 
 llm = create_llm(model="deepseek-chat", temperature=0)
 

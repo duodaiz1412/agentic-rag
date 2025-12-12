@@ -1,6 +1,7 @@
 from dotenv import load_dotenv
 
-load_dotenv()
+# Only load .env file if not in Docker (override=False prevents overriding existing env vars)
+load_dotenv(override=False)
 
 from graph.graph import app
 

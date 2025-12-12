@@ -6,7 +6,8 @@ from langchain_core.runnables import RunnableLambda, RunnableSequence
 
 from graph.chains.llm_config import create_llm, rate_limit_delay
 
-load_dotenv()
+# Only load .env file if not in Docker (override=False prevents overriding existing env vars)
+load_dotenv(override=False)
 
 
 class GradeAnswer(BaseModel):
